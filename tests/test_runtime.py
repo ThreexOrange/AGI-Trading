@@ -6,6 +6,11 @@ from agi_trading.security import TradingError
 
 
 class RuntimeTests(unittest.TestCase):
+    def setUp(self):
+        gate = patch("agi_trading.runtime.require_review")
+        gate.start()
+        self.addCleanup(gate.stop)
+
     def test_okx_bad_checksum_refuses_installation(self):
         opener = MagicMock()
         opener.open.return_value.__enter__.return_value.read.return_value = b"modified binary"

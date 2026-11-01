@@ -8,6 +8,7 @@ from .orders import Journal
 from .providers import CATALOG, exchange, wallet
 from .runtime import bootstrap, doctor
 from .security import TradingError, identifier, redact
+from . import verification
 
 
 def parser():
@@ -16,6 +17,17 @@ def parser():
     commands = root.add_subparsers(dest="command", required=True)
     commands.add_parser("providers")
     commands.add_parser("doctor")
+    commands.add_parser("audit", help="Offline evidence only; inspect REVIEWING.md before running project code").add_argument("--output")
+    commands.add_parser("review-template", help="Emit an unapproved review template for an independent reviewer").add_argument("--output")
+    commands.add_parser("review-status", help="Check the local review gate without credentials or network")
+    for name in ("review-import", "review-attestation", "review-feedback"):
+        cmd = commands.add_parser(name)
+        cmd.add_argument("--report", required=True, help="Private reviewer-authored JSON outside this repository")
+        if name == "review-attestation":
+            cmd.add_argument("--output")
+    verify = commands.add_parser("review-verify", help="Verify a review commitment locally; not a safety certificate")
+    verify.add_argument("--report", required=True)
+    verify.add_argument("--commitment", required=True)
     setup = commands.add_parser("bootstrap", help="Restore an official runtime without storing credentials")
     setup.add_argument("provider", choices=CATALOG)
     for name in ("status", "balances"):
@@ -59,6 +71,23 @@ def dispatch(args):
         return CATALOG
     if command == "doctor":
         return doctor()
+    if command == "audit":
+        result = verification.audit()
+        return verification.write_private_json(args.output, result) if args.output else result
+    if command == "review-template":
+        result = verification.template()
+        return verification.write_private_json(args.output, result) if args.output else result
+    if command == "review-status":
+        return verification.review_status()
+    if command == "review-import":
+        return verification.import_review(args.report)
+    if command == "review-attestation":
+        result = verification.attestation(args.report)
+        return verification.write_private_json(args.output, result) if args.output else result
+    if command == "review-feedback":
+        return verification.feedback(args.report)
+    if command == "review-verify":
+        return verification.verify_attestation(args.report, args.commitment)
     if command == "bootstrap":
         return bootstrap(args.provider)
     if command in ("status", "balances"):

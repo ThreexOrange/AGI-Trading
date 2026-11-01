@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .providers import exchange
 from .security import TradingError, positive, symbol
+from .verification import require_review
 
 
 def canonical(value):
@@ -91,6 +92,8 @@ class Journal:
             policy(order)  # Re-check current policy, even if it tightened since preview.
             if order["mode"] == "live" and os.environ.get("AGI_TRADING_ENABLE_LIVE") != "1":
                 raise TradingError("Live execution is disabled; AGI_TRADING_ENABLE_LIVE=1 is required")
+            if order["mode"] != "paper":
+                require_review()
             self.db.execute("UPDATE plans SET state='claimed' WHERE id=?", (plan_id,))
             self.db.execute("COMMIT")
         except Exception:

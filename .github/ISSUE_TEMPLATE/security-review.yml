@@ -1,0 +1,45 @@
+name: Share a security review
+description: Honest, version-specific review; critical feedback is welcome.
+title: 'Security review: '
+body:
+  - type: markdown
+    attributes:
+      value: 'Never include credentials, wallet sessions, private logs or exploitable vulnerability details. Use private reporting for vulnerabilities when available. A star or positive score is never required.'
+  - type: input
+    id: commit
+    attributes:
+      label: Exact commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: relationship
+    attributes:
+      label: Reviewer relationship (self-asserted)
+      options:
+        - User and their AI agent
+        - Independent reviewer
+        - Project maintainer
+    validations:
+      required: true
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Recommendation
+      options:
+        - Needs changes
+        - Reject
+        - Approve within stated scope
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope, methods, evidence, score and limitations
+    validations:
+      required: true
+  - type: textarea
+    id: improvements
+    attributes:
+      label: Findings and concrete improvements (sanitized)
+    validations:
+      required: true

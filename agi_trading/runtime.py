@@ -11,7 +11,8 @@ from pathlib import Path
 
 from .providers import CATALOG, exchange
 from .providers.native import executable
-from .security import TradingError
+from .security import TradingError, runtime_environment
+from .verification import require_review
 
 
 class ReleaseRedirect(urllib.request.HTTPRedirectHandler):
@@ -24,6 +25,7 @@ class ReleaseRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def install_okx():
+    require_review()
     folder = Path(__file__).parent / "providers" / "okx"
     manifest = json.loads((folder / "release.json").read_text())
     machine = platform.machine().lower()
@@ -61,7 +63,8 @@ def install_okx():
     finally:
         temporary.unlink(missing_ok=True)
     return {"provider": "okx", "cli_installed": True, "version": manifest["version"],
-            "sha256_verified": True, "note": "Official binary only; no skills, workflows, A2A or credentials installed"}
+            "sha256_verified": True, "next": "Installed runtime changed: collect audit evidence and review again before wallet access",
+            "note": "Official binary only; no skills, workflows, A2A or credentials installed"}
 
 
 def doctor():
@@ -88,6 +91,7 @@ def doctor():
 
 
 def bootstrap(provider):
+    require_review()
     if provider == "okx":
         return install_okx()
     if provider == "bybit":
@@ -99,10 +103,12 @@ def bootstrap(provider):
     command = [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(folder)]
     # stdout is reserved for machine-readable JSON. Avoid relaying npm diagnostics.
     try:
-        process = subprocess.run(command, capture_output=True, text=True, timeout=240, shell=False)
+        process = subprocess.run(command, capture_output=True, text=True, timeout=240, shell=False,
+                                 env=runtime_environment("npm"))
     except subprocess.TimeoutExpired:
         raise TradingError("Dependency installation timed out; retry bootstrap") from None
     if process.returncode:
         raise TradingError("npm ci failed; check registry connectivity. Package output withheld to protect credentials")
-    result = {"provider": provider, "dependencies_installed": True, "lifecycle_scripts_disabled": True}
+    result = {"provider": provider, "dependencies_installed": True, "lifecycle_scripts_disabled": True,
+              "next": "Collect audit evidence and review the installed dependencies before account access"}
     return result

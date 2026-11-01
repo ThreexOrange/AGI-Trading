@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from ..security import TradingError, positive, symbol
 from ..transport import Transport
+from ..verification import require_review
 
 
 class CEX:
@@ -15,6 +16,7 @@ class CEX:
         self.transport = transport or Transport()
 
     def request(self, method, path, params=None, private=False):
+        require_review()  # Before signing code reads any exchange credential.
         params = params or {}
         query = urlencode(sorted(params.items())) if method == "GET" else ""
         body = json.dumps(params, separators=(",", ":")) if method == "POST" else ""

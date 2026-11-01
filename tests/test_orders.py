@@ -32,6 +32,9 @@ class FakeExchange:
 
 class OrderTests(unittest.TestCase):
     def setUp(self):
+        gate = patch("agi_trading.orders.require_review")
+        gate.start()
+        self.addCleanup(gate.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.env = patch.dict(os.environ, {"AGI_TRADING_MAX_ORDER_USDT": "100", "AGI_TRADING_ALLOWED_SYMBOLS": "BTCUSDT,ETHUSDT", "AGI_TRADING_ENABLE_LIVE": "0"})
         self.env.start()

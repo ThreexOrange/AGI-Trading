@@ -1,0 +1,29 @@
+name: CodeQL security analysis
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          languages: python
+          build-mode: none
+          queries: security-extended
+          config: |
+            paths:
+              - agi_trading
+            paths-ignore:
+              - '**/node_modules/**'
+              - '**/.runtime/**'
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370
+        with:
+          category: /language:python

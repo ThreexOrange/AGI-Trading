@@ -11,7 +11,7 @@ from agi_trading.providers.binance.adapter import BinanceWallet
 from agi_trading.providers.bitget.adapter import Bitget
 from agi_trading.providers.bybit.adapter import Bybit
 from agi_trading.providers.okx.adapter import OKXWallet
-from agi_trading.providers.native import run
+from agi_trading.providers.native import executable, run
 from agi_trading.security import TradingError
 
 
@@ -26,6 +26,13 @@ class Capture:
 
 
 class AdapterTests(unittest.TestCase):
+    def setUp(self):
+        # These tests isolate API encoding. Gate behavior is exercised separately.
+        for target in ("agi_trading.providers.cex.require_review", "agi_trading.providers.native.require_review"):
+            gate = patch(target)
+            gate.start()
+            self.addCleanup(gate.stop)
+
     def test_bybit_signed_bytes_match_actual_post_body(self):
         capture = Capture({"retCode": 0, "result": {"orderId": "fake"}})
         order = {"symbol": "BTCUSDT", "side": "buy", "quantity": "0.001", "price": "50000"}
@@ -109,6 +116,10 @@ class AdapterTests(unittest.TestCase):
         with patch("agi_trading.providers.native.executable", return_value="onchainos"), patch("subprocess.run", return_value=response):
             with self.assertRaisesRegex(TradingError, "Login required"):
                 run("okx", "onchainos", ["wallet", "status"])
+
+    def test_unreviewed_path_binary_is_not_used(self):
+        with self.assertRaisesRegex(TradingError, "Reviewed local"):
+            executable("not-installed-fixture", "sh")
 
 
 if __name__ == "__main__":

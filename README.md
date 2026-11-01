@@ -4,6 +4,10 @@
 
 Python 3.11+；核心无第三方 Python 依赖。官方钱包工具按需安装，源代码和凭据不打包进本仓库。
 
+**先审查，再连接：** 人和 AI Agent 请从 [REVIEWING.md](REVIEWING.md) 开始；Agent 另见 [AGENTS.md](AGENTS.md)。v0.2 默认拦截联网、Key 签名、安装和官方 CLI 调用，直到本地导入针对当前源码及运行依赖的审查报告。报告应诚实评分并列出问题，允许拒绝和低分；不要求星标或好评。该门槛是应用控制，不能强迫外部 Agent 审计，也不能认证报告作者身份。
+
+[离线测试](https://github.com/ThreexOrange/AGI-Trading/actions/workflows/ci.yml) · [CodeQL 检查](https://github.com/ThreexOrange/AGI-Trading/actions/workflows/codeql.yml) · [提交审查反馈](https://github.com/ThreexOrange/AGI-Trading/issues/new/choose)
+
 ## 平台与当前能力
 
 每个平台有自己的子文件夹：[`agi_trading/providers/`](agi_trading/providers)。
@@ -18,6 +22,8 @@ Python 3.11+；核心无第三方 Python 依赖。官方钱包工具按需安装
 **能力实现不代表已连通实盘。** 无凭据测试包含离线单元测试、模拟流程和可用的公共接口；账户与实盘端到端验证需要各使用者自行连接。平台区域限制、账户类型和 Demo 支持范围以实际 API 响应为准，遇到限制停止，不切换为实盘。
 
 ## 快速开始
+
+以下命令在独立阅读源码、确认允许执行后运行。连接账户和 bootstrap 前，请按 REVIEWING.md 完成审查与报告导入；本版完整验证流程要求源码 checkout，安装包本身不能替代源码审查。
 
 ```bash
 git clone https://github.com/ThreexOrange/AGI-Trading.git
@@ -46,6 +52,8 @@ python3 -m agi_trading order-status PLAN_ID
 `paper` 只演练意图和执行控制，不联系交易所、不模拟资金、成交、手续费或收益。每个计划五分钟过期，只能认领一次。
 
 ### Binance / OKX 钱包
+
+先导入当前源码快照的审查。依赖安装或变化后，再审查包含已安装运行依赖的新快照；原报告不能用于新依赖。
 
 Binance 的官方 CLI 需要 Node.js >=20 和 npm；OKX 使用独立原生二进制：
 
@@ -118,3 +126,9 @@ python3 -m agi_trading order-plan bybit \
 ## License
 
 本仓库原创代码采用 MIT。官方工具遵循各自条款，不受本仓库许可证覆盖。Binance CLI 当前 npm 标注 `UNLICENSED`；我们只调用官方分发包，不复制其源码或二进制。各平台名称仅用于标明兼容对象，本项目由 3xOrange 独立维护。
+
+## 安全评价与可核验记录
+
+本项目没有“已认证绝对安全”的结论。`audit` 生成离线材料，用户自己的 Agent 或审计人员独立给出报告。审查记录绑定 Git 提交、源码和运行依赖哈希，七天后或版本变化后需重新审查；未解决的高危问题阻止放行。CodeQL/测试/依赖更新用于辅助发现问题，均不构成安全证明。
+
+`review-feedback` 只生成公开反馈草稿；实际用户自愿发布。`review-attestation` 和 `review-verify` 导出/核对内容承诺，适用于未来签名或链上存证；当前没有链上广播、身份认证或安全认证。星标完全自愿，与权限和评分无关。

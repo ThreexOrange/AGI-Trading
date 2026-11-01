@@ -67,3 +67,13 @@ def require_env(names):
     if missing:
         raise TradingError("Missing environment variables: " + ", ".join(missing))
     return [os.environ[n] for n in names]
+
+
+def runtime_environment(purpose):
+    """Minimize child environment exposure; this is not a filesystem sandbox."""
+    allowed = {"PATH", "HOME", "USERPROFILE", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT",
+               "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TERM",
+               "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy",
+               "all_proxy", "no_proxy", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS"}
+    prefixes = {"binance": ("BAW_", "BINANCE_"), "okx": ("ONCHAINOS_", "OKX_")}.get(purpose, ())
+    return {key: value for key, value in os.environ.items() if key in allowed or key.startswith(prefixes)}

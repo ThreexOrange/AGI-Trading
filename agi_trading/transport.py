@@ -7,6 +7,7 @@ import urllib.request
 from urllib.parse import urlsplit
 
 from .security import TradingError
+from .verification import require_review
 
 HOSTS = {
     "api.bybit.com", "api-testnet.bybit.com", "api.bybit.tr", "api.bybit.kz",
@@ -30,6 +31,7 @@ class Transport:
         if (parsed.scheme != "https" or parsed.hostname not in HOSTS
                 or parsed.username or parsed.password or parsed.port not in (None, 443)):
             raise TradingError("API host is not allowed")
+        require_review()
         with self._lock:
             delay = 0.35 - (time.monotonic() - Transport._last_call)
             if delay > 0:
