@@ -1,0 +1,6 @@
+{
+  "name": "agi-trading-bitget-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "dependencies": {"@bitget-ai/bitget-agent-cli": "3.0.0"}
+}

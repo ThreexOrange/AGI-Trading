@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agi-trading"
+version = "0.1.0"
+description = "Portable AI trading integrations for Binance, OKX, Bitget and Bybit"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = []
+
+[project.scripts]
+agi-trading = "agi_trading.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["agi_trading*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"agi_trading.providers" = ["*/package.json", "*/package-lock.json", "*/release.json"]

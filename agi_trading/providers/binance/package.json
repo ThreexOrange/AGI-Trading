@@ -1,0 +1,6 @@
+{
+  "name": "agi-trading-binance-runtime",
+  "private": true,
+  "version": "0.1.0",
+  "dependencies": {"@binance/agentic-wallet": "1.12.0"}
+}
