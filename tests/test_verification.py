@@ -119,7 +119,10 @@ class VerificationTests(unittest.TestCase):
 
     def test_report_and_receipt_are_private_and_local(self):
         self.save(self.report())
-        self.assertEqual(v.state_file().stat().st_mode & 0o777, 0o600)
+        if os.name == "nt":
+            self.assertTrue(v._windows_receipt_acl(v.state_file()))
+        else:
+            self.assertEqual(v.state_file().stat().st_mode & 0o777, 0o600)
         self.assertNotIn(self.root, v.state_file().parents)
 
     def test_duplicate_json_keys_are_rejected(self):
@@ -182,7 +185,13 @@ class VerificationTests(unittest.TestCase):
 
     def test_world_readable_receipt_is_rejected(self):
         self.save(self.report())
-        v.state_file().chmod(0o644)
+        if os.name == "nt":
+            receipt = v.state_file()
+            report = receipt.read_bytes()
+            receipt.unlink()
+            receipt.write_bytes(report)
+        else:
+            v.state_file().chmod(0o644)
         with self.assertRaisesRegex(TradingError, "private"):
             v.require_review()
 

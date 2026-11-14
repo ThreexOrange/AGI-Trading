@@ -2,10 +2,13 @@ import argparse
 import json
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 from . import __version__
 from .orders import Journal
 from .providers import CATALOG, exchange, wallet
+from .providers.binance import options as binance_options
+from .providers.binance.plans import WalletPlans
 from .runtime import bootstrap, doctor
 from .security import TradingError, identifier, redact
 from . import verification
@@ -46,6 +49,19 @@ def parser():
     quote.add_argument("--from-token", required=True)
     quote.add_argument("--to-token", required=True)
     quote.add_argument("--amount", required=True, help="Human-readable source-token quantity")
+    commands.add_parser("binance-commands", help="List supported Binance wallet commands and options")
+    for name, help_text in (("binance-read", "Query or preview a Binance wallet operation"),
+                            ("binance-plan", "Create a Binance wallet operation for review")):
+        command = commands.add_parser(name, help=help_text)
+        command.add_argument("operation", help="Official Binance command path in quotes")
+        options = command.add_mutually_exclusive_group()
+        options.add_argument("--options", default="{}", help="JSON object of official Binance long options")
+        options.add_argument("--options-file", type=Path, help="Read the options JSON from a local file")
+    binance_execute = commands.add_parser("binance-execute", help="Submit a confirmed Binance wallet plan once")
+    binance_execute.add_argument("plan_id")
+    binance_execute.add_argument("--confirm", required=True, help="Exact digest returned by binance-plan")
+    binance_status = commands.add_parser("binance-plan-status", help="Read local Binance submission status")
+    binance_status.add_argument("plan_id")
     ticker = commands.add_parser("ticker", help="Spot CEX data; separate from on-chain swap quotes")
     ticker.add_argument("provider", choices=("bitget", "bybit"))
     ticker.add_argument("--symbol", required=True)
@@ -90,6 +106,23 @@ def dispatch(args):
         return verification.verify_attestation(args.report, args.commitment)
     if command == "bootstrap":
         return bootstrap(args.provider)
+    if command == "binance-commands":
+        return binance_options.catalog()
+    if command in ("binance-read", "binance-plan"):
+        raw = args.options_file.read_text(encoding="utf-8-sig") if args.options_file else args.options
+        options = binance_options.json_options(raw)
+    if command == "binance-read":
+        return binance_options.read(wallet("binance"), args.operation, options)
+    if command in ("binance-plan", "binance-execute", "binance-plan-status"):
+        plans = WalletPlans(wallet("binance"))
+        try:
+            if command == "binance-plan":
+                return plans.create(args.operation, options)
+            if command == "binance-execute":
+                return plans.execute(args.plan_id, args.confirm)
+            return plans.status(args.plan_id)
+        finally:
+            plans.close()
     if command in ("status", "balances"):
         is_wallet = args.provider in ("binance", "okx")
         if is_wallet and args.network:
@@ -129,7 +162,7 @@ def main(argv=None):
         result = {"ok": False, "error": str(exc)}
         code = 1
     except KeyboardInterrupt:
-        result = {"ok": False, "error": "Interrupted. If a submission was in progress, reconcile with order-status before any further action."}
+        result = {"ok": False, "error": "Interrupted. If a submission was in progress, check its plan status and provider history before taking another action."}
         code = 130
     result["observed_at"] = datetime.now(timezone.utc).isoformat()
     print(json.dumps(redact(result), ensure_ascii=False, indent=2))

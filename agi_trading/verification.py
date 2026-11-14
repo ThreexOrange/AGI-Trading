@@ -4,6 +4,7 @@ Inspect this module independently before running it. An application cannot
 authenticate itself or constrain a hostile local operator.
 """
 import ast
+import base64
 import hashlib
 import json
 import os
@@ -91,7 +92,7 @@ def audit(root=None):
         if not name.startswith("agi_trading/") or not name.endswith(".py"):
             continue
         try:
-            tree = ast.parse((root / name).read_text())
+            tree = ast.parse((root / name).read_text(encoding="utf-8"))
         except (SyntaxError, UnicodeError):
             findings.append({"severity": "high", "file": name, "issue": "Python syntax could not be inspected"})
             continue
@@ -191,7 +192,42 @@ def read_json(path):
                 raise TradingError("Duplicate review JSON keys are not allowed")
             result[key] = value
         return result
-    return json.loads(path.read_text(), object_pairs_hook=unique)
+    return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique)
+
+
+def _windows_receipt_acl(path, *, protect=False):
+    # Pass the path as data, including when the checkout or profile has spaces.
+    script = r"""
+        $ErrorActionPreference = 'Stop'
+        $file = [IO.FileInfo]::new($env:AGI_TRADING_REVIEW_FILE)
+        $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+        $full = [Security.AccessControl.FileSystemRights]::FullControl
+        $allow = [Security.AccessControl.AccessControlType]::Allow
+        if ($env:AGI_TRADING_PROTECT_REVIEW -eq '1') {
+            $acl = [Security.AccessControl.FileSecurity]::new()
+            $acl.SetAccessRuleProtection($true, $false)
+            $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid, $full, $allow))
+            $file.SetAccessControl($acl)
+        }
+        $acl = $file.GetAccessControl()
+        $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+        $owner = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+        $trustedOwners = @($sid.Value, 'S-1-5-18', 'S-1-5-32-544')
+        if ($acl.AreAccessRulesProtected -and $owner -in $trustedOwners -and $rules.Count -eq 1 -and
+            $rules[0].IdentityReference -eq $sid -and $rules[0].AccessControlType -eq $allow -and
+            $rules[0].FileSystemRights -eq $full) { exit 0 }
+        exit 1
+    """
+    env = runtime_environment("review")
+    env.update(AGI_TRADING_REVIEW_FILE=str(path), AGI_TRADING_PROTECT_REVIEW="1" if protect else "0")
+    powershell = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+    encoded_script = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
+    try:
+        result = subprocess.run([str(powershell), "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded_script],
+                                capture_output=True, env=env, timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
+    except (OSError, subprocess.TimeoutExpired):
+        raise TradingError("Could not check Windows access permissions for the review receipt") from None
+    return result.returncode == 0
 
 
 def write_private_json(path, value):
@@ -202,36 +238,34 @@ def write_private_json(path, value):
     if ROOT == destination or ROOT in destination.parents:
         raise TradingError("Evidence/review output must be outside the source repository")
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as stream:
-        temporary = Path(stream.name)
-        stream.write(encoded(value))
+    _replace_private_json(destination, value)
+    return {"saved": str(destination), "published": False}
+
+
+def _replace_private_json(destination, value):
+    fd, name = tempfile.mkstemp(dir=destination.parent)
+    os.close(fd)
+    temporary = Path(name)
     try:
         temporary.chmod(0o600)
+        if os.name == "nt" and not _windows_receipt_acl(temporary, protect=True):
+            raise TradingError("Could not make the Windows review receipt private")
+        temporary.write_bytes(encoded(value))
         temporary.replace(destination)
     finally:
         temporary.unlink(missing_ok=True)
-    return {"saved": str(destination), "published": False}
 
 
 def import_review(path):
     report = validate(read_json(path), snapshot(), approved=False)
-    payload = encoded(report)
-    destination = state_file()
-    with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as stream:
-        temporary = Path(stream.name)
-        stream.write(payload)
+    _replace_private_json(state_file(), report)
     try:
-        temporary.chmod(0o600)
-        temporary.replace(destination)
-    finally:
-        temporary.unlink(missing_ok=True)
-    try:
-        validate(report, snapshot(), approved=True)
+        require_review()
         allowed = True
     except TradingError:
         allowed = False
     return {"review_saved_locally": True, "operations_allowed": allowed,
-            "report_sha256": hashlib.sha256(payload).hexdigest(), "published": False,
+            "report_sha256": digest(report), "published": False,
             "note": "Local review record only; reviewer identity and claims are not independently authenticated"}
 
 
@@ -239,8 +273,12 @@ def require_review():
     path = state_file()
     if not path.exists():
         raise TradingError("Security review required before networking, credentials or official CLI execution. Read REVIEWING.md, run audit, obtain an independent review and import its report")
-    if path.is_symlink() or stat.S_IMODE(path.stat().st_mode) & 0o077:
-        raise TradingError("Review receipt must be a private regular file (0600)")
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode):
+        raise TradingError("Review receipt must be a private regular file")
+    private = _windows_receipt_acl(path) if os.name == "nt" else not info.st_mode & 0o077
+    if not private:
+        raise TradingError("Review receipt must be a private regular file")
     report = read_json(path)
     validate(report, snapshot(), approved=True)
     return report

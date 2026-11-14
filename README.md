@@ -14,7 +14,7 @@ Python 3.11+；核心无第三方 Python 依赖。官方钱包工具按需安装
 
 | 平台 | 接入对象 | 本版已实现 | 尚未开放 |
 | --- | --- | --- | --- |
-| [Binance](agi_trading/providers/binance) | 官方 `baw` 链上 Agentic Wallet | 环境恢复、配对、状态、地址、余额、支持链、兑换报价 | 链上交易执行、交易所现货/合约 |
+| [Binance](agi_trading/providers/binance) | 官方 `baw` 链上 Agentic Wallet | 钱包查询、转账、DEX 兑换及限价单、DeFi、预测市场、授权、支付和签名 | 交易所现货/合约 |
 | [OKX](agi_trading/providers/okx) | 官方 OnchainOS 链上钱包 | 固定版本 CLI 恢复、分阶段登录、状态、地址、余额、支持链、兑换报价 | 链上交易执行、交易所现货/合约 |
 | [Bitget](agi_trading/providers/bitget) | 交易所 UTA v3 REST | 现货行情、余额、签名请求、现货限价单预览/提交/查询、Demo 路由 | Web3 钱包、合约、提现、撤单 |
 | [Bybit](agi_trading/providers/bybit) | 交易所 V5 REST，HMAC 密钥 | 现货行情、余额、签名请求、现货限价单预览/提交/查询、Testnet 路由 | Web3 钱包、RSA/OAuth、合约、提现、撤单 |
@@ -65,6 +65,8 @@ python3 -m agi_trading login binance
 python3 -m agi_trading verify binance --session PAIRING_ID
 python3 -m agi_trading status binance
 python3 -m agi_trading balances binance
+python3 -m agi_trading binance-commands
+python3 -m agi_trading binance-read "wallet tx-history"
 ```
 
 OKX：
