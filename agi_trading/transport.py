@@ -12,7 +12,7 @@ from .verification import require_review
 HOSTS = {
     "api.bybit.com", "api-testnet.bybit.com", "api.bybit.tr", "api.bybit.kz",
     "api.bybitgeorgia.ge", "api.bybit.ae", "api.bybit.eu", "api.bybit.id",
-    "api.manepa.jp", "api.spark-fintech.com", "api.bitget.com",
+    "api.manepa.jp", "api.spark-fintech.com", "api.bitget.com", "web3.binance.com",
 }
 
 

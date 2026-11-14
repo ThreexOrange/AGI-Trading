@@ -2,7 +2,7 @@
 
 CATALOG = {
     "binance": {"backend": "onchain-wallet", "binary": "baw", "wallet_reads": True,
-                "swap_quote": True, "spot_limit_execute": False, "onchain_execute": False},
+                "swap_quote": True, "spot_limit_execute": False, "onchain_execute": True},
     "okx": {"backend": "onchain-wallet", "binary": "onchainos", "wallet_reads": True,
             "swap_quote": True, "spot_limit_execute": False, "onchain_execute": False},
     "bitget": {"backend": "cex-uta-v3", "binary": None, "wallet_reads": False,

@@ -75,5 +75,7 @@ def runtime_environment(purpose):
                "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TERM",
                "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY", "http_proxy", "https_proxy",
                "all_proxy", "no_proxy", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS"}
+    if purpose == "binance":
+        allowed.add("NODE_USE_ENV_PROXY")
     prefixes = {"binance": ("BAW_", "BINANCE_"), "okx": ("ONCHAINOS_", "OKX_")}.get(purpose, ())
     return {key: value for key, value in os.environ.items() if key in allowed or key.startswith(prefixes)}

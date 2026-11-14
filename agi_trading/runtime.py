@@ -96,11 +96,18 @@ def bootstrap(provider):
         return install_okx()
     if provider == "bybit":
         return {"provider": provider, "installed": True, "note": "Built-in stdlib REST adapter; no extra dependency required"}
-    npm = shutil.which("npm")
+    npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
     if not npm:
         raise TradingError("Install Node.js >=20 and npm, then retry")
+    command = [npm]
+    if os.name == "nt":
+        node = shutil.which("node.exe")
+        npm_cli = Path(npm).parent / "node_modules/npm/bin/npm-cli.js"
+        if not node or not npm_cli.is_file():
+            raise TradingError("Install the Windows Node.js distribution with its bundled npm, then retry")
+        command = [node, str(npm_cli)]
     folder = Path(__file__).parent / "providers" / provider
-    command = [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(folder)]
+    command.extend(["ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(folder)])
     # stdout is reserved for machine-readable JSON. Avoid relaying npm diagnostics.
     try:
         process = subprocess.run(command, capture_output=True, text=True, timeout=240, shell=False,

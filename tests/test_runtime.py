@@ -1,7 +1,11 @@
+import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from agi_trading.runtime import ReleaseRedirect, install_okx
+from agi_trading.providers import native
+from agi_trading.runtime import ReleaseRedirect, bootstrap, install_okx
 from agi_trading.security import TradingError
 
 
@@ -27,6 +31,32 @@ class RuntimeTests(unittest.TestCase):
         with patch("platform.system", return_value="Linux"), patch("platform.machine", return_value="riscv64"):
             with self.assertRaisesRegex(TradingError, "architecture"):
                 install_okx()
+
+    @unittest.skipUnless(os.name == "nt", "Windows Node.js entry points")
+    def test_windows_runs_locked_binance_entry_with_node(self):
+        with tempfile.TemporaryDirectory() as folder:
+            module = Path(folder) / "native.py"
+            script = module.parent / "binance/node_modules/@binance/agentic-wallet/dist/index.js"
+            script.parent.mkdir(parents=True)
+            script.touch()
+            with (patch.object(native, "__file__", str(module)), patch.object(native, "require_review"),
+                  patch.object(native.shutil, "which", return_value="node.exe"),
+                  patch.object(native.subprocess, "run", return_value=MagicMock(stdout="{}", returncode=0)) as run):
+                native.run("binance", "baw", ["wallet", "status", "--json"])
+            self.assertEqual(run.call_args.args[0], ["node.exe", str(script), "wallet", "status", "--json"])
+            self.assertFalse(run.call_args.kwargs["shell"])
+
+    @unittest.skipUnless(os.name == "nt", "Windows Node.js entry points")
+    def test_windows_bootstrap_runs_bundled_npm_with_lifecycle_scripts_disabled(self):
+        with tempfile.TemporaryDirectory() as folder:
+            npm_cli = Path(folder) / "node_modules/npm/bin/npm-cli.js"
+            npm_cli.parent.mkdir(parents=True)
+            npm_cli.touch()
+            with (patch("agi_trading.runtime.shutil.which", side_effect=[str(Path(folder) / "npm.cmd"), "node.exe"]),
+                  patch("agi_trading.runtime.subprocess.run", return_value=MagicMock(returncode=0)) as run):
+                bootstrap("binance")
+            self.assertEqual(run.call_args.args[0][:4], ["node.exe", str(npm_cli), "ci", "--ignore-scripts"])
+            self.assertFalse(run.call_args.kwargs["shell"])
 
 
 if __name__ == "__main__":
